@@ -1,7 +1,7 @@
 # Hospital Patient Management System AWS Deployment Script
-# This script deploys the application to AWS
+# This script deploys the application to AWS - Free Tier Compatible
 
-Write-Host "Starting deployment process for Hospital Patient Management System..." -ForegroundColor Green
+Write-Host "Starting deployment process for Hospital Patient Management System (Free Tier)..." -ForegroundColor Green
 
 # Check if AWS CLI is installed
 if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
@@ -18,33 +18,19 @@ try {
     exit 1
 }
 
-# Ask for environment (development, production)
-Write-Host "Which environment do you want to deploy to? (dev/prod)" -ForegroundColor Yellow
-$ENV = Read-Host
-
-if ($ENV -ne "dev" -and $ENV -ne "prod") {
-    Write-Host "Invalid environment. Please specify 'dev' or 'prod'." -ForegroundColor Red
-    exit 1
-}
-
-# Set environment-specific variables
-if ($ENV -eq "dev") {
-    $DB_INSTANCE_TYPE = "db.t3.micro"
-    $EC2_INSTANCE_TYPE = "t2.micro"
-    $PREFIX = "hpms-dev"
-} else {
-    $DB_INSTANCE_TYPE = "db.t3.small"
-    $EC2_INSTANCE_TYPE = "t2.small"
-    $PREFIX = "hpms-prod"
-}
+# Set environment variables - Free Tier compatible
+$DB_INSTANCE_TYPE = "db.t3.micro" # Free tier eligible
+$EC2_INSTANCE_TYPE = "t2.micro"   # Free tier eligible
+$PREFIX = "hpms-freetier"
+$REGION = "us-east-1"  # Make sure this matches your configured region
 
 # Create S3 bucket for frontend assets
 Write-Host "Creating S3 bucket for frontend assets..." -ForegroundColor Green
 $BUCKET_NAME = "$PREFIX-frontend-$(Get-Date -UFormat %s)"
-aws s3api create-bucket --bucket $BUCKET_NAME --region us-east-1
+aws s3api create-bucket --bucket $BUCKET_NAME --region $REGION
 
-# Create RDS database instance
-Write-Host "Creating RDS database instance..." -ForegroundColor Green
+# Create RDS database instance - Free Tier compatible
+Write-Host "Creating RDS database instance (Free Tier)..." -ForegroundColor Green
 $DB_IDENTIFIER = "$PREFIX-db"
 $DB_NAME = "hospital_db"
 $DB_USERNAME = "admin"
@@ -52,37 +38,37 @@ $DB_USERNAME = "admin"
 $DB_PASSWORD = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 16 | ForEach-Object {[char]$_})
 
 aws rds create-db-instance `
-    --db-instance-identifier $DB_IDENTIFIER `
-    --db-instance-class $DB_INSTANCE_TYPE `
-    --engine mysql `
-    --engine-version 8.0 `
-    --allocated-storage 20 `
-    --db-name $DB_NAME `
-    --master-username $DB_USERNAME `
-    --master-user-password $DB_PASSWORD `
+    --db-instance-identifier "$DB_IDENTIFIER" `
+    --db-instance-class "$DB_INSTANCE_TYPE" `
+    --engine "mysql" `
+    --engine-version "8.0" `
+    --allocated-storage 20 `         # Free tier eligible (up to 20GB)
+    --db-name "$DB_NAME" `
+    --master-username "$DB_USERNAME" `
+    --master-user-password "$DB_PASSWORD" `
     --publicly-accessible `
     --backup-retention-period 7 `
-    --tags Key=Environment,Value=$ENV
+    --tags "Key=Environment,Value=freetier"
 
 Write-Host "Waiting for database to be created (this may take several minutes)..." -ForegroundColor Yellow
-aws rds wait db-instance-available --db-instance-identifier $DB_IDENTIFIER
+aws rds wait db-instance-available --db-instance-identifier "$DB_IDENTIFIER"
 
 # Get database endpoint
-$DB_ENDPOINT = aws rds describe-db-instances --db-instance-identifier $DB_IDENTIFIER --query "DBInstances[0].Endpoint.Address" --output text
+$DB_ENDPOINT = aws rds describe-db-instances --db-instance-identifier "$DB_IDENTIFIER" --query "DBInstances[0].Endpoint.Address" --output text
 
 # Create EC2 security group
 Write-Host "Creating security group for EC2 instance..." -ForegroundColor Green
 $SG_NAME = "$PREFIX-sg"
-$SG_ID = aws ec2 create-security-group --group-name $SG_NAME --description "Security group for Hospital Patient Management System" --output text --query 'GroupId'
+$SG_ID = aws ec2 create-security-group --group-name "$SG_NAME" --description "Security group for Hospital Patient Management System" --output text --query 'GroupId'
 
 # Allow HTTP, HTTPS, and SSH traffic
-aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 80 --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 443 --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 22 --cidr 0.0.0.0/0
-aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 5000 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id "$SG_ID" --protocol tcp --port 80 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id "$SG_ID" --protocol tcp --port 443 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id "$SG_ID" --protocol tcp --port 22 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id "$SG_ID" --protocol tcp --port 5000 --cidr 0.0.0.0/0
 
-# Create EC2 instance for backend API
-Write-Host "Creating EC2 instance for backend API..." -ForegroundColor Green
+# Create EC2 instance for backend API - Free Tier compatible
+Write-Host "Creating EC2 instance for backend API (Free Tier t2.micro)..." -ForegroundColor Green
 $EC2_NAME = "$PREFIX-api"
 
 # Create user data script for EC2 instance
@@ -126,7 +112,7 @@ User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/app/src/api
 Environment="PATH=/home/ubuntu/app/venv/bin"
-ExecStart=/home/ubuntu/app/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 app:app
+ExecStart=/home/ubuntu/app/venv/bin/gunicorn --workers 2 --bind 0.0.0.0:5000 app:app
 
 [Install]
 WantedBy=multi-user.target
@@ -166,21 +152,22 @@ cd /home/ubuntu/app/src/database
 mysql -h $DB_ENDPOINT -u $DB_USERNAME -p$DB_PASSWORD $DB_NAME < schema.sql
 "@
 
-# Launch EC2 instance
+# Launch EC2 instance - Free Tier compatible AMI (Amazon Linux 2)
+# ami-0261755bbcb8c4a84 is Ubuntu, using Amazon Linux 2 AMI instead which is free tier eligible
 $INSTANCE_ID = aws ec2 run-instances `
-    --image-id ami-0261755bbcb8c4a84 `
-    --instance-type $EC2_INSTANCE_TYPE `
-    --security-group-ids $SG_ID `
-    --user-data $USER_DATA `
+    --image-id "ami-0230bd60aa48260c6" `  # Amazon Linux 2 AMI - Free tier eligible
+    --instance-type "$EC2_INSTANCE_TYPE" `
+    --security-group-ids "$SG_ID" `
+    --user-data "$USER_DATA" `
     --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$EC2_NAME}]" `
     --query 'Instances[0].InstanceId' `
     --output text
 
 Write-Host "Waiting for EC2 instance to start..." -ForegroundColor Yellow
-aws ec2 wait instance-running --instance-ids $INSTANCE_ID
+aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
 
 # Get EC2 public IP
-$EC2_IP = aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].PublicIpAddress' --output text
+$EC2_IP = aws ec2 describe-instances --instance-ids "$INSTANCE_ID" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text
 
 # Deploy frontend to S3
 Write-Host "Deploying frontend to S3..." -ForegroundColor Green
@@ -197,11 +184,11 @@ aws s3 sync src/frontend/ s3://$BUCKET_NAME/ --acl public-read
 aws s3 website s3://$BUCKET_NAME/ --index-document index.html --error-document index.html
 
 # Get S3 website URL
-$S3_URL = "http://$BUCKET_NAME.s3-website-us-east-1.amazonaws.com"
+$S3_URL = "http://$BUCKET_NAME.s3-website-$REGION.amazonaws.com"
 
 # Summary
-Write-Host "`n====== Deployment Summary ======" -ForegroundColor Green
-Write-Host "Environment: $ENV" -ForegroundColor Yellow
+Write-Host "`n====== Deployment Summary (Free Tier) ======" -ForegroundColor Green
+Write-Host "Environment: FREE TIER" -ForegroundColor Yellow
 Write-Host "Database endpoint: $DB_ENDPOINT" -ForegroundColor Yellow
 Write-Host "Database name: $DB_NAME" -ForegroundColor Yellow
 Write-Host "Database username: $DB_USERNAME" -ForegroundColor Yellow
@@ -209,9 +196,12 @@ Write-Host "Database password: $DB_PASSWORD" -ForegroundColor Yellow
 Write-Host "Backend API server: http://$EC2_IP" -ForegroundColor Yellow
 Write-Host "Frontend URL: $S3_URL" -ForegroundColor Yellow
 Write-Host "S3 bucket name: $BUCKET_NAME" -ForegroundColor Yellow
-Write-Host "=================================" -ForegroundColor Green
+Write-Host "=========================================" -ForegroundColor Green
 
 Write-Host "`nDeployment completed successfully!" -ForegroundColor Green
 Write-Host "NOTE: It may take a few minutes for the EC2 instance to complete its startup script." -ForegroundColor Yellow
-Write-Host "For SSH access: ssh ubuntu@$EC2_IP" -ForegroundColor Yellow
-Write-Host "For production deployments, consider setting up HTTPS with a domain name and SSL certificate." -ForegroundColor Yellow 
+Write-Host "For SSH access: ssh ec2-user@$EC2_IP" -ForegroundColor Yellow
+Write-Host "IMPORTANT: To stay within free tier limits, remember to delete these resources when not in use with:" -ForegroundColor Red
+Write-Host "aws rds delete-db-instance --db-instance-identifier $DB_IDENTIFIER --skip-final-snapshot" -ForegroundColor Yellow
+Write-Host "aws ec2 terminate-instances --instance-ids $INSTANCE_ID" -ForegroundColor Yellow
+Write-Host "aws s3 rb s3://$BUCKET_NAME --force" -ForegroundColor Yellow 
