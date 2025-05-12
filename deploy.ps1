@@ -22,12 +22,12 @@ try {
 $DB_INSTANCE_TYPE = "db.t3.micro" # Free tier eligible
 $EC2_INSTANCE_TYPE = "t2.micro"   # Free tier eligible
 $PREFIX = "hpms-freetier"
-$REGION = "us-east-1"  # Make sure this matches your configured region
+$REGION = "ap-south-1"  # Updated to match your configured region
 
 # Create S3 bucket for frontend assets
 Write-Host "Creating S3 bucket for frontend assets..." -ForegroundColor Green
 $BUCKET_NAME = "$PREFIX-frontend-$(Get-Date -UFormat %s)"
-aws s3api create-bucket --bucket $BUCKET_NAME --region $REGION
+aws s3api create-bucket --bucket $BUCKET_NAME --region $REGION --create-bucket-configuration LocationConstraint=$REGION
 
 # Create RDS database instance - Free Tier compatible
 Write-Host "Creating RDS database instance (Free Tier)..." -ForegroundColor Green
@@ -153,9 +153,9 @@ mysql -h $DB_ENDPOINT -u $DB_USERNAME -p$DB_PASSWORD $DB_NAME < schema.sql
 "@
 
 # Launch EC2 instance - Free Tier compatible AMI (Amazon Linux 2)
-# ami-0261755bbcb8c4a84 is Ubuntu, using Amazon Linux 2 AMI instead which is free tier eligible
+# Use Amazon Linux 2 AMI ID for ap-south-1 region - Free tier eligible
 $INSTANCE_ID = aws ec2 run-instances `
-    --image-id "ami-0230bd60aa48260c6" `  # Amazon Linux 2 AMI - Free tier eligible
+    --image-id "ami-0763cf792771fe1bd" `  # Amazon Linux 2 AMI for ap-south-1 region - Free tier eligible
     --instance-type "$EC2_INSTANCE_TYPE" `
     --security-group-ids "$SG_ID" `
     --user-data "$USER_DATA" `
@@ -184,7 +184,7 @@ aws s3 sync src/frontend/ s3://$BUCKET_NAME/ --acl public-read
 aws s3 website s3://$BUCKET_NAME/ --index-document index.html --error-document index.html
 
 # Get S3 website URL
-$S3_URL = "http://$BUCKET_NAME.s3-website-$REGION.amazonaws.com"
+$S3_URL = "http://$BUCKET_NAME.s3-website.$REGION.amazonaws.com"
 
 # Summary
 Write-Host "`n====== Deployment Summary (Free Tier) ======" -ForegroundColor Green
