@@ -98,7 +98,7 @@ apt-get install -y python3-pip python3-dev nginx git
 pip3 install virtualenv
 
 # Clone the repository
-git clone https://github.com/yourusername/hospital-patient-management-system.git /home/ubuntu/app
+git clone https://github.com/saurabhdubeyy/Data-analytics.git /home/ubuntu/app
 
 # Setup virtual environment
 cd /home/ubuntu/app
