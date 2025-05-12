@@ -1,0 +1,69 @@
+Hospital Patient Database Schema Diagram
+===============================
+
++----------------+       +-------------------+       +----------------+
+|    patients    |       |  medical_history  |       |     vitals     |
++----------------+       +-------------------+       +----------------+
+| patient_id (PK)|<----->| history_id (PK)   |       | vital_id (PK)  |
+| first_name     |       | patient_id (FK)   |       | patient_id (FK)|
+| last_name      |       | condition_name    |       | recorded_at    |
+| date_of_birth  |       | diagnosis_date    |       | temperature    |
+| gender         |       | treatment         |       | heart_rate     |
+| email          |       | notes             |       | blood_pressure_|
+| phone          |       +-------------------+       | systolic       |
+| address        |                                   | blood_pressure_|
+| city           |       +-------------------+       | diastolic      |
+| state          |       |    medications    |       | respiratory_rate|
+| zip_code       |       +-------------------+       | oxygen_saturation|
+| insurance_     |       | medication_id (PK)|       | notes          |
+| provider       |       | patient_id (FK)   |       +----------------+
+| insurance_id   |       | medication_name   |
+| emergency_     |       | dosage            |
+| contact_name   |       | frequency         |       +----------------+
+| emergency_     |       | start_date        |       |  appointments  |
+| contact_phone  |       | end_date          |       +----------------+
+| created_at     |       | prescribing_doctor|       | appointment_id |
+| updated_at     |       | notes             |       | (PK)           |
++----------------+       +-------------------+       | patient_id (FK)|
+        |                                            | doctor_id (FK) |
+        |                                            | appointment_date|
+        |                                            | reason         |
+        |                +-------------------+       | status         |
+        |                |      doctors      |       | notes          |
+        |                +-------------------+       +----------------+
+        |                | doctor_id (PK)    |
+        |                | first_name        |
+        |                | last_name         |       +----------------+
+        |                | specialization    |       | follow_up_visits|
+        |                | email             |       +----------------+
+        |                | phone             |       | visit_id (PK)  |
+        |                +-------------------+       | patient_id (FK)|
+        |                        ^                   | visit_date     |
+        |                        |                   | doctor_id (FK) |
+        |                        |                   | reason         |
+        |                        |                   | diagnosis      |
+        v                        |                   | treatment_plan |
++----------------+               |                   | follow_up_     |
+|    delivery_   |               |                   | required       |
+|  information   |               |                   | follow_up_date |
++----------------+               |                   | notes          |
+| delivery_id (PK)|              |                   +----------------+
+| patient_id (FK)|              |
+| delivery_date  |              |                   +----------------+
+| delivery_method|              |                   |  lab_results   |
+| complications  |              |                   +----------------+
+| birth_weight   |              |                   | result_id (PK) |
+| apgar_score    |              |                   | patient_id (FK)|
+| attending_     |<-------------+                   | test_name      |
+| doctor         |                                  | test_date      |
+| notes          |                                  | result_value   |
++----------------+                                  | normal_range   |
+                                                    | is_abnormal    |
+                                                    | notes          |
+                                                    +----------------+
+
+Legend:
+-------
+PK = Primary Key
+FK = Foreign Key
+<-----> = One-to-Many Relationship 

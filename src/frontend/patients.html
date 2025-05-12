@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patients - Hospital Patient Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Hospital Patient Management System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="patients.html">Patients</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="analytics.html">Analytics</a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    <div class="text-light me-3">
+                        <span id="userName">User</span>
+                        <span class="ms-2 badge bg-secondary" id="userRole">Role</span>
+                    </div>
+                    <button id="logoutBtn" class="btn btn-outline-light">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Patient Records</h2>
+            <a href="index.html" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add New Patient
+            </a>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="text" id="searchPatient" class="form-control" placeholder="Search patients...">
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-end">
+                            <select id="filterPatients" class="form-select w-50">
+                                <option value="">All Patients</option>
+                                <option value="high-risk">High-Risk Pregnancies</option>
+                                <option value="missed-followup">Missed Follow-ups</option>
+                                <option value="recent">Recent Deliveries</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="patientsList">
+                    <!-- This will be populated by JavaScript -->
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p>Loading patients...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <nav aria-label="Patient list pagination">
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <footer class="footer mt-5 py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">Hospital Patient Management System &copy; 2023</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="auth.js"></script>
+    <script src="scripts.js"></script>
+    
+    <script>
+        // Add event listener for search
+        document.getElementById('searchPatient').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const patientItems = document.querySelectorAll('#patientsList .list-group-item');
+            
+            patientItems.forEach(item => {
+                const patientName = item.querySelector('h5').textContent.toLowerCase();
+                const patientDetails = item.querySelector('p').textContent.toLowerCase();
+                
+                if (patientName.includes(searchTerm) || patientDetails.includes(searchTerm)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+        
+        // Add event listener for filter
+        document.getElementById('filterPatients').addEventListener('change', function(e) {
+            const filterValue = e.target.value;
+            
+            // In a real application, this would trigger an API call with the filter
+            // For now, we'll just log the filter value
+            console.log('Filter selected:', filterValue);
+            
+            // Simulate filtering by hiding some items
+            const patientItems = document.querySelectorAll('#patientsList .list-group-item');
+            
+            if (filterValue === '') {
+                // Show all
+                patientItems.forEach(item => {
+                    item.style.display = '';
+                });
+            } else {
+                // In a real app, this would be handled by the API
+                // This is just a simulation
+                patientItems.forEach((item, index) => {
+                    if (
+                        (filterValue === 'high-risk' && index % 5 === 0) ||
+                        (filterValue === 'missed-followup' && index % 4 === 0) ||
+                        (filterValue === 'recent' && index % 3 === 0)
+                    ) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

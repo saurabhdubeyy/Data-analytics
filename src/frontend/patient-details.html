@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Details - Hospital Patient Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">Hospital Patient Management System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="patients.html">Patients</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="analytics.html">Analytics</a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    <div class="text-light me-3">
+                        <span id="userName">User</span>
+                        <span class="ms-2 badge bg-secondary" id="userRole">Role</span>
+                    </div>
+                    <button id="logoutBtn" class="btn btn-outline-light">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 id="patientName">Patient Details</h2>
+            <a href="patients.html" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Patients List
+            </a>
+        </div>
+        
+        <div id="patientDetailsContainer">
+            <!-- Content will be loaded dynamically -->
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading patient details...</p>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="footer mt-5 py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">Hospital Patient Management System &copy; 2023</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="auth.js"></script>
+    <script src="scripts.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const patientId = urlParams.get('id');
+            
+            if (!patientId) {
+                showErrorMessage('No patient ID provided');
+                return;
+            }
+            
+            loadPatientDetails(patientId);
+        });
+        
+        async function loadPatientDetails(patientId) {
+            try {
+                const patientDetailsContainer = document.getElementById('patientDetailsContainer');
+                
+                // Use authFetch to make authenticated request
+                const response = await authFetch(`${API_BASE_URL}/patients/${patientId}`);
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to load patient details');
+                }
+                
+                const patient = await response.json();
+                
+                // Update patient name in heading
+                document.getElementById('patientName').textContent = `${patient.first_name} ${patient.last_name}`;
+                
+                // Build patient details view
+                let html = `
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5>Personal Information</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>ID:</strong> ${patient.patient_id}</p>
+                                    <p><strong>Date of Birth:</strong> ${formatDate(patient.date_of_birth)}</p>
+                                    <p><strong>Gender:</strong> ${patient.gender || 'Not specified'}</p>
+                                    <p><strong>Email:</strong> ${patient.email || 'Not provided'}</p>
+                                    <p><strong>Phone:</strong> ${patient.phone || 'Not provided'}</p>
+                                    <p><strong>Address:</strong><br> 
+                                        ${patient.address || ''} ${patient.address ? '<br>' : ''}
+                                        ${patient.city || ''} ${patient.city && patient.state ? ',' : ''} ${patient.state || ''} ${patient.zip_code || ''}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div class="card mb-4">
+                                <div class="card-header bg-info text-white">
+                                    <h5>Insurance & Emergency Info</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Insurance Provider:</strong> ${patient.insurance_provider || 'Not provided'}</p>
+                                    <p><strong>Insurance ID:</strong> ${patient.insurance_id || 'Not provided'}</p>
+                                    <hr>
+                                    <p><strong>Emergency Contact:</strong> ${patient.emergency_contact_name || 'Not provided'}</p>
+                                    <p><strong>Emergency Phone:</strong> ${patient.emergency_contact_phone || 'Not provided'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <!-- Latest Vitals -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Latest Vitals</h5>
+                                    <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#addVitalsModal">
+                                        <i class="bi bi-plus-circle"></i> Record New
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    ${renderVitals(patient.vitals)}
+                                </div>
+                            </div>
+                            
+                            <!-- Medical History -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5>Medical History</h5>
+                                </div>
+                                <div class="card-body">
+                                    ${renderMedicalHistory(patient.medical_history)}
+                                </div>
+                            </div>
+                            
+                            <!-- Medications -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-warning text-dark">
+                                    <h5>Medications</h5>
+                                </div>
+                                <div class="card-body">
+                                    ${renderMedications(patient.medications)}
+                                </div>
+                            </div>
+                            
+                            <!-- Appointments -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h5>Appointments</h5>
+                                </div>
+                                <div class="card-body">
+                                    ${renderAppointments(patient.appointments)}
+                                </div>
+                            </div>
+                            
+                            <!-- Delivery Information -->
+                            <div class="card mb-4">
+                                <div class="card-header bg-danger text-white">
+                                    <h5>Delivery Information</h5>
+                                </div>
+                                <div class="card-body">
+                                    ${renderDeliveryInfo(patient.delivery_information)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                patientDetailsContainer.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showErrorMessage(error.message);
+            }
+        }
+        
+        function renderVitals(vitals) {
+            if (!vitals || vitals.length === 0) {
+                return '<p class="text-muted">No vitals recorded</p>';
+            }
+            
+            // Sort by recorded_at descending
+            vitals.sort((a, b) => new Date(b.recorded_at) - new Date(a.recorded_at));
+            
+            // Get the most recent vitals
+            const latest = vitals[0];
+            
+            let html = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Date:</strong> ${formatDateTime(latest.recorded_at)}</p>
+                        <p><strong>Temperature:</strong> ${latest.temperature ? latest.temperature + ' °C' : 'N/A'}</p>
+                        <p><strong>Heart Rate:</strong> ${latest.heart_rate ? latest.heart_rate + ' bpm' : 'N/A'}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Blood Pressure:</strong> ${latest.blood_pressure_systolic && latest.blood_pressure_diastolic ? 
+                                latest.blood_pressure_systolic + '/' + latest.blood_pressure_diastolic + ' mmHg' : 'N/A'}</p>
+                        <p><strong>Respiratory Rate:</strong> ${latest.respiratory_rate ? latest.respiratory_rate + ' breaths/min' : 'N/A'}</p>
+                        <p><strong>Oxygen Saturation:</strong> ${latest.oxygen_saturation ? latest.oxygen_saturation + '%' : 'N/A'}</p>
+                    </div>
+                </div>
+                
+                <h6 class="mt-3">Historical Vitals</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Temp (°C)</th>
+                                <th>HR</th>
+                                <th>BP</th>
+                                <th>RR</th>
+                                <th>SpO2</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            // Show up to 5 historical records
+            const historicalVitals = vitals.slice(0, 5);
+            
+            historicalVitals.forEach(vital => {
+                html += `
+                    <tr>
+                        <td>${formatDate(vital.recorded_at)}</td>
+                        <td>${vital.temperature || 'N/A'}</td>
+                        <td>${vital.heart_rate || 'N/A'}</td>
+                        <td>${vital.blood_pressure_systolic && vital.blood_pressure_diastolic ? 
+                            vital.blood_pressure_systolic + '/' + vital.blood_pressure_diastolic : 'N/A'}</td>
+                        <td>${vital.respiratory_rate || 'N/A'}</td>
+                        <td>${vital.oxygen_saturation || 'N/A'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            return html;
+        }
+        
+        function renderMedicalHistory(history) {
+            if (!history || history.length === 0) {
+                return '<p class="text-muted">No medical history recorded</p>';
+            }
+            
+            let html = '<div class="list-group">';
+            
+            history.forEach(item => {
+                html += `
+                    <div class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${item.condition_name}</h6>
+                            <small>${formatDate(item.diagnosed_date)}</small>
+                        </div>
+                        <p class="mb-1">${item.notes || 'No additional notes'}</p>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function renderMedications(medications) {
+            if (!medications || medications.length === 0) {
+                return '<p class="text-muted">No medications recorded</p>';
+            }
+            
+            let html = '<div class="list-group">';
+            
+            medications.forEach(med => {
+                html += `
+                    <div class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${med.medication_name}</h6>
+                            <span class="badge ${med.active ? 'bg-success' : 'bg-secondary'}">
+                                ${med.active ? 'Active' : 'Discontinued'}
+                            </span>
+                        </div>
+                        <p class="mb-1"><strong>Dosage:</strong> ${med.dosage}</p>
+                        <p class="mb-1"><strong>Frequency:</strong> ${med.frequency}</p>
+                        <p class="mb-1"><strong>Start Date:</strong> ${formatDate(med.start_date)}</p>
+                        ${med.end_date ? `<p class="mb-1"><strong>End Date:</strong> ${formatDate(med.end_date)}</p>` : ''}
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function renderAppointments(appointments) {
+            if (!appointments || appointments.length === 0) {
+                return '<p class="text-muted">No appointments scheduled</p>';
+            }
+            
+            // Sort by appointment date
+            appointments.sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
+            
+            // Separate future and past appointments
+            const currentDate = new Date();
+            const futureAppointments = appointments.filter(apt => new Date(apt.appointment_date) >= currentDate);
+            const pastAppointments = appointments.filter(apt => new Date(apt.appointment_date) < currentDate);
+            
+            let html = '';
+            
+            // Future appointments
+            if (futureAppointments.length > 0) {
+                html += '<h6>Upcoming Appointments</h6>';
+                html += '<div class="list-group mb-3">';
+                
+                futureAppointments.forEach(apt => {
+                    html += `
+                        <div class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${apt.appointment_type}</h6>
+                                <strong>${formatDate(apt.appointment_date)}</strong>
+                            </div>
+                            <p class="mb-1"><strong>Doctor:</strong> ${apt.doctor_name || 'Not assigned'}</p>
+                            <p class="mb-1">${apt.notes || 'No notes'}</p>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            // Past appointments
+            if (pastAppointments.length > 0) {
+                html += '<h6>Past Appointments</h6>';
+                html += '<div class="list-group">';
+                
+                // Show only last 3 past appointments
+                const recentPastAppointments = pastAppointments.slice(-3).reverse();
+                
+                recentPastAppointments.forEach(apt => {
+                    html += `
+                        <div class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${apt.appointment_type}</h6>
+                                <small>${formatDate(apt.appointment_date)}</small>
+                            </div>
+                            <p class="mb-1"><strong>Doctor:</strong> ${apt.doctor_name || 'Not recorded'}</p>
+                            <p class="mb-1">${apt.notes || 'No notes'}</p>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            return html;
+        }
+        
+        function renderDeliveryInfo(deliveryInfo) {
+            if (!deliveryInfo || deliveryInfo.length === 0) {
+                return '<p class="text-muted">No delivery information recorded</p>';
+            }
+            
+            // Sort by delivery date (descending)
+            deliveryInfo.sort((a, b) => new Date(b.delivery_date) - new Date(a.delivery_date));
+            
+            let html = '';
+            
+            deliveryInfo.forEach(delivery => {
+                html += `
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            Delivery on ${formatDate(delivery.delivery_date)}
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Method:</strong> ${delivery.delivery_method}</p>
+                                    <p><strong>Doctor:</strong> ${delivery.doctor_name || 'Not recorded'}</p>
+                                    <p><strong>Hospital:</strong> ${delivery.hospital || 'Not recorded'}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Baby's weight:</strong> ${delivery.baby_weight ? delivery.baby_weight + ' g' : 'Not recorded'}</p>
+                                    <p><strong>Complications:</strong> ${delivery.complications || 'None'}</p>
+                                </div>
+                            </div>
+                            ${delivery.notes ? `<p><strong>Notes:</strong> ${delivery.notes}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        function showErrorMessage(message) {
+            document.getElementById('patientDetailsContainer').innerHTML = `
+                <div class="alert alert-danger">
+                    <h4 class="alert-heading">Error!</h4>
+                    <p>${message}</p>
+                    <hr>
+                    <p class="mb-0">
+                        <a href="patients.html" class="alert-link">Return to patients list</a>
+                    </p>
+                </div>
+            `;
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            
+            const date = new Date(dateString);
+            return date.toLocaleDateString();
+        }
+        
+        function formatDateTime(dateTimeString) {
+            if (!dateTimeString) return 'N/A';
+            
+            const date = new Date(dateTimeString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+    </script>
+</body>
+</html> 
+</html> 
